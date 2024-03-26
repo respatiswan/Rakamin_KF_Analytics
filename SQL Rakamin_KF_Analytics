@@ -1,0 +1,74 @@
+-- Menggabungkan data kf_final_transaction dengan kf_kantor_cabang menggunakan left join,
+-- disini mengunakan CTE 
+
+with kf1 as (
+select
+    kfft.transaction_id,
+    kfft.date,
+    kfft.branch_id,
+    kfkc.branch_name,
+    kfkc.kota,
+    kfkc.provinsi,
+    kfkc.rating as rating_cabang,
+    kfft.customer_name,
+    kfft.product_id,
+    kfft.discount_percentage,
+    kfft.rating as rating_transaksi
+from
+    `rakamin-418205.kimia_farma.kf_final_transaction` as kfft
+    left join `rakamin-418205.kimia_farma.kf_kantor_cabang` as kfkc
+    on kfft.branch_id = kfkc.branch_id
+)
+
+-- mengabungkan data CTE kf1 dengan data kf_product
+-- dengan memakai CTE
+
+,kf2 as (
+  select
+      kf1.transaction_id,
+      kf1.date,
+      kf1.branch_id,
+      kf1.branch_name,
+      kf1.kota,
+      kf1.provinsi,
+      kf1.rating_cabang,
+      kf1.customer_name,
+      kf1.product_id,
+      kfp.product_name,
+      kfp.price as actual_price,
+      kf1.discount_percentage,
+      case 
+            when (kfp.price <= 50000) then 0.1
+            when (kfp.price > 50000 and kfp.price <= 100000) then 0.15
+            when (kfp.price > 100000 and kfp.price <= 300000) then 0.2
+            when (kfp.price > 300000 and kfp.price <= 500000) then 0.25
+            when (kfp.price > 500000) then 0.3
+            end as persentase_gross_laba,
+      kfp.price - (kfp.price * kf1.discount_percentage) as nett_sales,
+      kf1.rating_transaksi
+  from
+      kf1 left join `rakamin-418205.kimia_farma.kf_product` as kfp
+      on kf1.product_id = kfp.product_id  
+)
+
+-- data sudah menjadi dataset lengkap
+
+select
+    transaction_id,
+    date,
+    branch_id,
+    branch_name,
+    kota,
+    provinsi,
+    rating_cabang,
+    customer_name,
+    product_id,
+    product_name,
+    actual_price,
+    discount_percentage,
+    persentase_gross_laba,
+    nett_sales,
+    round((nett_sales * persentase_gross_laba),0)  as nett_profit,
+    rating_transaksi
+from kf2
+
